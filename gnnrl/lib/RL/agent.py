@@ -131,7 +131,7 @@ class CriticNetworkPlain(nn.Module):
         self.load_state_dict(T.load(self.checkpoint_file))
 
 class ActorCritic(nn.Module):
-    def __init__(self, state_dim, action_dim, action_std):
+    def __init__(self, state_dim, action_dim, action_std, plain=False):
         super(ActorCritic, self).__init__()
         # action mean range -1 to 1
         actor_cfg = {
@@ -148,8 +148,12 @@ class ActorCritic(nn.Module):
             'g_hidden_size':50,
             'g_embedding_size':50,
         }
-        self.actor = ActorNetwork(**actor_cfg)
-        self.critic = CriticNetwork(**critic_cfg)
+        if plain:
+            self.actor = ActorNetworkPlain(**actor_cfg)
+            self.critic = CriticNetworkPlain(**critic_cfg)
+        else:
+            self.actor = ActorNetwork(**actor_cfg)
+            self.critic = CriticNetwork(**critic_cfg)
 
         self.action_var = torch.full((action_dim,), action_std*action_std).to(device)
         
@@ -187,18 +191,18 @@ class ActorCritic(nn.Module):
 
 
 class Agent:
-    def __init__(self, state_dim, action_dim, action_std, lr, betas, gamma, K_epochs, eps_clip):
+    def __init__(self, state_dim, action_dim, action_std, lr, betas, gamma, K_epochs, eps_clip, plain=False):
         self.lr = lr
         self.betas = betas
         self.gamma = gamma
         self.eps_clip = eps_clip
         self.K_epochs = K_epochs
         
-        self.policy = ActorCritic(state_dim, action_dim, action_std).to(device)
+        self.policy = ActorCritic(state_dim, action_dim, action_std, plain).to(device)
         # self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr, betas=betas)
         self.optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, self.policy.parameters()), lr=lr, betas=betas)
 
-        self.policy_old = ActorCritic(state_dim, action_dim, action_std).to(device)
+        self.policy_old = ActorCritic(state_dim, action_dim, action_std, plain).to(device)
         self.policy_old.load_state_dict(self.policy.state_dict())
         
         self.MseLoss = nn.MSELoss()
