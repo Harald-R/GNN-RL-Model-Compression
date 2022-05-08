@@ -67,11 +67,11 @@ def search_tiling(env, agent, update_timestep, max_timesteps, max_episodes,
 
         avg_length += t
 
-        # stop training if avg_reward > solved_reward
-        if (i_episode % log_interval) != 0 and running_reward / (i_episode % log_interval) > (solved_reward):
-            print("########## Solved! ##########")
-            torch.save(agent.policy.state_dict(), './rl_solved_{}.pth'.format(env_name))
-            break
+        # # stop training if avg_reward > solved_reward
+        # if (i_episode % log_interval) != 0 and running_reward / (i_episode % log_interval) > (solved_reward):
+        #     print("########## Solved! ##########")
+        #     torch.save(agent.policy.state_dict(), './rl_solved_{}.pth'.format(env_name))
+        #     break
 
         # save every 500 episodes
         if i_episode % 500 == 0:

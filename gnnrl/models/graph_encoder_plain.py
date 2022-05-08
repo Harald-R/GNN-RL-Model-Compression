@@ -18,16 +18,24 @@ class graph_encoder_pyg(nn.Module):
         self.tanh = nn.Tanh()
         self.relu = torch.relu
 
-    def forward(self,  Graph):
+    def forward(self, graphs):
+        if type(graphs) is not list:
+            graphs = [graphs]
 
-        x, edge_index,batch = Graph.x, Graph.edge_index,Graph.batch
-        x = self.conv1(x, edge_index)
-        x = self.relu(x)
-        embedding = global_mean_pool(x,batch)
-        embedding = self.linear1(embedding)
-        embedding = self.tanh(embedding)
+        for i, graphs in enumerate(graphs):
+            x, edge_index,batch = graphs.x, graphs.edge_index, graphs.batch
+            x = self.conv1(x, edge_index)
+            x = self.relu(x)
+            embedding = global_mean_pool(x,batch)
+            embedding = self.linear1(embedding)
+            embedding = self.tanh(embedding)
 
-        return embedding
+            if i == 0:
+                embeddings = embedding
+            else:
+                torch.cat((embeddings, embedding), dim=0)
+
+        return embeddings
 
 if __name__ == '__main__':
     edge_index = torch.tensor([[0, 1],

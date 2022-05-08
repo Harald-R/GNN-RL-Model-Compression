@@ -29,8 +29,11 @@ def create_graph():
         tiling scheme
     """
     x = torch.tensor([
-        [3, 224, 224, 2, 16, 3, 3, 3, 2, 16, 112, 112, 2, 1],
-        [16, 112, 112, 2, 32, 16, 3, 3, 2, 32, 112, 112, 2, 1]
+        [3, 512, 512, 2, 16, 3, 3, 3, 2, 16, 256, 256, 2, 1],
+        [16, 256, 256, 2, 32, 16, 3, 3, 2, 32, 128, 128, 2, 1],
+        [32, 128, 128, 2, 64, 32, 3, 3, 2, 64, 64, 64, 2, 1],
+        [64, 64, 64, 2, 64, 64, 3, 3, 2, 128, 64, 64, 2, 1],
+        [128, 64, 64, 2, 256, 128, 3, 3, 2, 256, 64, 64, 2, 1]
     ], dtype=torch.float, device=device)
 
     edge_index = torch.tensor([
@@ -38,13 +41,13 @@ def create_graph():
         [1],
     ],dtype=torch.long, device=device)
 
-    num_layers = 2
+    num_layers = len(x)
 
     return Data(x=x, edge_index=edge_index), num_layers
 
 graph, num_layers = create_graph()
 
-max_dim_tiles = 8
+max_dim_tiles = 10
 
 env = TilingGraphEnv(graph,
                      num_layers,

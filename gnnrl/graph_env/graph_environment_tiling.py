@@ -1,18 +1,8 @@
 import os
 import shutil
 import torch
-import torch.nn as nn
-
-from gnnrl.graph_env.graph_construction import hierarchical_graph_construction, net_info
-from gnnrl.graph_env.feedback_calculation import reward_caculation
-from gnnrl.graph_env.flops_calculation import flops_caculation_forward, preserve_flops
-from gnnrl.graph_env.share_layers import share_layer_index
-from gnnrl.graph_env.network_pruning import channel_pruning
-
 
 import numpy as np
-import copy
-
 class TilingGraphEnv:
 
     def __init__(self, graph, n_layers, max_dim_tiles, max_timesteps, log_dir, memory_size_bytes = 917504):
@@ -22,6 +12,8 @@ class TilingGraphEnv:
 
         self.state = None
         self.done = False
+        self.best_reward = 0
+        self.best_graph_tiling_scheme = None
         self.max_timesteps = max_timesteps
 
         self.memory_size_bytes = memory_size_bytes
@@ -30,12 +22,14 @@ class TilingGraphEnv:
 
     def reset(self):
         self.done = False
+        self.best_reward = 0
+        self.best_graph_tiling_scheme = None
         self.state = self.graph
         return self.state
 
     def step(self, action, time_step):
 
-        reward = self.compute_reward(action)
+        reward, graph_tiling_scheme = self.compute_reward(action)
 
         # if reduced_flops >= self.desired_flops:
         #     self.done = True
@@ -65,28 +59,40 @@ class TilingGraphEnv:
 
         self.update_state(action)
 
+        if reward > self.best_reward:
+            self.best_reward = reward
+            self.best_graph_tiling_scheme = graph_tiling_scheme
+            print('Reward: {}, tiling scheme: {}'.format(self.best_reward, self.best_graph_tiling_scheme))
+
         return self.state, reward, self.done
 
     def compute_reward(self, action):
         negative_reward = 0
         positive_reward = 0
 
+        max_layer_positive_reward = 20
+
+        graph_tiling_scheme = []
+
         for i, layer in enumerate(self.state['x']):
             layer_action = action[i * self.max_dim_tiles : i * self.max_dim_tiles + self.max_dim_tiles]
             new_tiling_scheme = np.argmax(layer_action) + 1
 
+            graph_tiling_scheme.append(new_tiling_scheme)
+
             layer_size = self.compute_layer_size(layer, new_tiling_scheme)
             if layer_size <= self.memory_size_bytes:
-                positive_reward += 1
+                memory_usage_ratio = (layer_size / self.memory_size_bytes).item()
+                positive_reward += memory_usage_ratio * max_layer_positive_reward
             else:
-                negative_reward += 1
+                negative_reward -= 1
 
-        print('negative_reward:', negative_reward)
-        print('positive_reward:', positive_reward)
+        # print('negative_reward:', negative_reward)
+        # print('positive_reward:', positive_reward)
 
-        if negative_reward > 0:
-            return negative_reward
-        return positive_reward
+        if negative_reward < 0:
+            return negative_reward, graph_tiling_scheme
+        return positive_reward, graph_tiling_scheme
 
 
     def compute_layer_size(self, layer, new_tiling_scheme):
