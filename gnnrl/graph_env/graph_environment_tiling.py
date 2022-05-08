@@ -32,7 +32,7 @@ class TilingGraphEnv:
 
     def step(self, action, time_step):
 
-        # reward = self.compute_reward(action)
+        reward = self.compute_reward(action)
 
         # if reduced_flops >= self.desired_flops:
         #     self.done = True
@@ -57,17 +57,19 @@ class TilingGraphEnv:
 
         if time_step == self.max_timesteps:
             if not self.done:
-                rewards = -100
+                reward = -100
                 self.done = True
 
         self.state = self.update_state(action)
 
-        return self.state, rewards, self.done
+        return self.state, reward, self.done
 
     def compute_reward(self, action):
-        for layer in self.state:
-            # TODO: see if layer fits in memory and determine reward based on that
-            pass
+        print('============= STATE: ', self.state)
+        print('============= ACTION: ', action)
+        # for layer in self.state:
+        #     # TODO: see if layer fits in memory and determine reward based on that
+        #     pass
         pass
 
     def update_state(self, action):
