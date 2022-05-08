@@ -14,16 +14,23 @@ def create_graph():
         input height
         input width
         input element byte size
-        weight output channels
-        weight input channels
-        weight kernel height
-        weight kernel width
-        weight element byte size
+
+        weights output channels
+        weights input channels
+        weights kernel height
+        weights kernel width
+        weights element byte size
+
+        output channels
+        output height
+        output width
+        output element byte size
+
         tiling scheme
     """
     x = torch.tensor([
-        [3, 224, 224, 2, 16, 3, 3, 3, 2, 1],
-        [16, 112, 112, 2, 32, 16, 3, 3, 2, 1]
+        [3, 224, 224, 2, 16, 3, 3, 3, 2, 16, 112, 112, 2, 1],
+        [16, 112, 112, 2, 32, 16, 3, 3, 2, 32, 112, 112, 2, 1]
     ], dtype=torch.float, device=device)
 
     edge_index = torch.tensor([
@@ -37,15 +44,16 @@ def create_graph():
 
 graph, num_layers = create_graph()
 
+max_dim_tiles = 8
+
 env = TilingGraphEnv(graph,
                      num_layers,
-                     log_dir="results_tiling",
-                     max_timesteps=5)
+                     max_dim_tiles,
+                     max_timesteps=5,
+                     log_dir="results_tiling")
 
-max_tiles = 8
-num_actions = num_layers * max_tiles
-
-num_features = 10
+num_features = 14
+num_actions = num_layers * max_dim_tiles
 
 agent = AgentTiling(state_dim=num_features,
                     action_dim=num_actions,

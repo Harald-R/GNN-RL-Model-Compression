@@ -15,13 +15,16 @@ import copy
 
 class TilingGraphEnv:
 
-    def __init__(self, graph, n_layers, log_dir, max_timesteps):
+    def __init__(self, graph, n_layers, max_dim_tiles, max_timesteps, log_dir, memory_size_bytes = 917504):
         self.graph = graph
         self.n_layers = n_layers
+        self.max_dim_tiles = max_dim_tiles
 
         self.state = None
         self.done = False
         self.max_timesteps = max_timesteps
+
+        self.memory_size_bytes = memory_size_bytes
 
         self.log_dir = log_dir
 
@@ -60,20 +63,64 @@ class TilingGraphEnv:
                 reward = -100
                 self.done = True
 
-        self.state = self.update_state(action)
+        self.update_state(action)
 
         return self.state, reward, self.done
 
     def compute_reward(self, action):
-        print('============= STATE: ', self.state)
-        print('============= ACTION: ', action)
-        # for layer in self.state:
-        #     # TODO: see if layer fits in memory and determine reward based on that
-        #     pass
-        pass
+        negative_reward = 0
+        positive_reward = 0
+
+        for i, layer in enumerate(self.state['x']):
+            layer_action = action[i * self.max_dim_tiles : i * self.max_dim_tiles + self.max_dim_tiles]
+            new_tiling_scheme = np.argmax(layer_action) + 1
+
+            layer_size = self.compute_layer_size(layer, new_tiling_scheme)
+            if layer_size <= self.memory_size_bytes:
+                positive_reward += 1
+            else:
+                negative_reward += 1
+
+        print('negative_reward:', negative_reward)
+        print('positive_reward:', positive_reward)
+
+        if negative_reward > 0:
+            return negative_reward
+        return positive_reward
+
+
+    def compute_layer_size(self, layer, new_tiling_scheme):
+        in_C                   = layer[0]
+        in_H                   = layer[1]
+        in_W                   = layer[2]
+        in_elem_byte_size      = layer[3]
+        weights_OC             = layer[4]
+        weights_IC             = layer[5]
+        weights_KH             = layer[6]
+        weights_KW             = layer[7]
+        weights_elem_byte_size = layer[8]
+        out_C                  = layer[9]
+        out_H                  = layer[10]
+        out_W                  = layer[11]
+        out_elem_byte_size     = layer[12]
+
+        height_tiles = new_tiling_scheme
+
+        input_size = in_C * (in_H / height_tiles) * in_W * in_elem_byte_size
+        weights_size = weights_OC * weights_IC * weights_KH * weights_KW * weights_elem_byte_size
+        output_size = out_C * (out_H / height_tiles) * out_W * out_elem_byte_size
+
+        return input_size + weights_size + output_size
 
     def update_state(self, action):
-        pass
+        for i, layer in enumerate(self.state['x']):
+            layer_action = action[i * self.max_dim_tiles : i * self.max_dim_tiles + self.max_dim_tiles]
+            new_tiling_scheme = np.argmax(layer_action) + 1
+
+            new_layer_features = layer.clone()
+            new_layer_features[13] = new_tiling_scheme
+
+            self.state['x'][i] = new_layer_features
 
     def save_checkpoint(self,state, is_best, checkpoint_dir='.'):
         filename = os.path.join(checkpoint_dir, self.model_name+'ckpt.pth.tar')
