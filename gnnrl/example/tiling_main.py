@@ -37,8 +37,8 @@ def create_graph():
     ], dtype=torch.float, device=device)
 
     edge_index = torch.tensor([
-        [0],
-        [1],
+        [0, 1, 2, 3],
+        [1, 2, 3, 4],
     ],dtype=torch.long, device=device)
 
     num_layers = len(x)
@@ -56,7 +56,7 @@ env = TilingGraphEnv(graph,
                      log_dir="results_tiling")
 
 num_features = 14
-num_actions = num_layers * max_dim_tiles
+num_actions = num_layers * (max_dim_tiles * 2)  # supports tiling over C and H for each layer
 
 agent = AgentTiling(state_dim=num_features,
                     action_dim=num_actions,
@@ -69,7 +69,7 @@ agent = AgentTiling(state_dim=num_features,
 
 search_tiling(env,
               agent,
-              update_timestep=200,
+              update_timestep=500,
               max_timesteps=100,
               max_episodes=15000,
               log_interval=10,

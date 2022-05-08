@@ -73,9 +73,15 @@ class TilingGraphEnv:
         graph_tiling_scheme = []
 
         for i, layer in enumerate(self.state['x']):
-            layer_action = action[i * self.max_dim_tiles : i * self.max_dim_tiles + self.max_dim_tiles]
-            new_tiling_scheme = np.argmax(layer_action) + 1
+            num_layer_actions = self.max_dim_tiles * 2
+            layer_action = action[i * num_layer_actions : i * num_layer_actions + num_layer_actions]
+            tiling_channel = layer_action[:self.max_dim_tiles]
+            tiling_height = layer_action[self.max_dim_tiles:]
 
+            tiling_channel = np.argmax(tiling_channel) + 1
+            tiling_height = np.argmax(tiling_height) + 1
+
+            new_tiling_scheme = [tiling_channel, tiling_height]
             graph_tiling_scheme.append(new_tiling_scheme)
 
             layer_size = self.compute_layer_size(layer, new_tiling_scheme)
@@ -94,26 +100,31 @@ class TilingGraphEnv:
 
 
     def compute_layer_size(self, layer, new_tiling_scheme):
-        in_C                   = layer[0]
-        in_H                   = layer[1]
-        in_W                   = layer[2]
-        in_elem_byte_size      = layer[3]
-        weights_OC             = layer[4]
-        weights_IC             = layer[5]
-        weights_KH             = layer[6]
-        weights_KW             = layer[7]
-        weights_elem_byte_size = layer[8]
-        out_C                  = layer[9]
-        out_H                  = layer[10]
-        out_W                  = layer[11]
-        out_elem_byte_size     = layer[12]
+        in_C                   , \
+        in_H                   , \
+        in_W                   , \
+        in_elem_byte_size      , \
+        weights_OC             , \
+        weights_IC             , \
+        weights_KH             , \
+        weights_KW             , \
+        weights_elem_byte_size , \
+        out_C                  , \
+        out_H                  , \
+        out_W                  , \
+        out_elem_byte_size     , _ = layer
 
-        height_tiles = new_tiling_scheme
+        channel_tiles, height_tiles = new_tiling_scheme
 
-        # TODO: allow last tile to be smaller; ensure new dim is integer
-        input_size = in_C * (in_H / height_tiles) * in_W * in_elem_byte_size
-        weights_size = weights_OC * weights_IC * weights_KH * weights_KW * weights_elem_byte_size
-        output_size = out_C * (out_H / height_tiles) * out_W * out_elem_byte_size
+        # TODO: also try adding only +1 in case remainder exists
+        tiled_weights_OC = weights_OC // channel_tiles + (weights_OC % channel_tiles)
+        tiled_out_C = out_C // channel_tiles + (out_C % channel_tiles)
+        tiled_in_H  = in_H // height_tiles + (in_H % height_tiles)
+        tiled_out_H = out_H // height_tiles + (out_H % height_tiles)
+
+        input_size = in_C * tiled_in_H * in_W * in_elem_byte_size
+        weights_size = tiled_weights_OC * weights_IC * weights_KH * weights_KW * weights_elem_byte_size
+        output_size = tiled_out_C * tiled_out_H * out_W * out_elem_byte_size
 
         return input_size + weights_size + output_size
 
