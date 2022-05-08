@@ -22,8 +22,6 @@ class TilingGraphEnv:
 
     def reset(self):
         self.done = False
-        self.best_reward = 0
-        self.best_graph_tiling_scheme = None
         self.state = self.graph
         return self.state
 
@@ -54,7 +52,7 @@ class TilingGraphEnv:
 
         if time_step == self.max_timesteps:
             if not self.done:
-                reward = -100
+                # reward = -100
                 self.done = True
 
         self.update_state(action)
@@ -112,6 +110,7 @@ class TilingGraphEnv:
 
         height_tiles = new_tiling_scheme
 
+        # TODO: allow last tile to be smaller; ensure new dim is integer
         input_size = in_C * (in_H / height_tiles) * in_W * in_elem_byte_size
         weights_size = weights_OC * weights_IC * weights_KH * weights_KW * weights_elem_byte_size
         output_size = out_C * (out_H / height_tiles) * out_W * out_elem_byte_size
