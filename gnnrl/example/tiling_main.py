@@ -29,11 +29,11 @@ def create_graph():
         tiling scheme
     """
     x = torch.tensor([
-        [3, 512, 512, 2, 16, 3, 3, 3, 2, 16, 256, 256, 2, 1],
-        [16, 256, 256, 2, 32, 16, 3, 3, 2, 32, 128, 128, 2, 1],
-        [32, 128, 128, 2, 64, 32, 3, 3, 2, 64, 64, 64, 2, 1],
-        [64, 64, 64, 2, 64, 64, 3, 3, 2, 128, 64, 64, 2, 1],
-        [128, 64, 64, 2, 256, 128, 3, 3, 2, 256, 64, 64, 2, 1]
+        [3, 512, 512, 2, 16, 3, 3, 3, 2, 16, 256, 256, 2, 1, 1],
+        [16, 256, 256, 2, 32, 16, 3, 3, 2, 32, 128, 128, 2, 1, 1],
+        [32, 128, 128, 2, 64, 32, 3, 3, 2, 64, 64, 64, 2, 1, 1],
+        [64, 64, 64, 2, 64, 64, 3, 3, 2, 128, 64, 64, 2, 1, 1],
+        [128, 64, 64, 2, 256, 128, 3, 3, 2, 256, 64, 64, 2, 1, 1]
     ], dtype=torch.float, device=device)
 
     edge_index = torch.tensor([
@@ -55,7 +55,7 @@ env = TilingGraphEnv(graph,
                      max_timesteps=5,
                      log_dir="results_tiling")
 
-num_features = 14
+num_features = 15
 num_actions = num_layers * (max_dim_tiles * 2)  # supports tiling over C and H for each layer
 
 agent = AgentTiling(state_dim=num_features,
@@ -64,13 +64,13 @@ agent = AgentTiling(state_dim=num_features,
                     lr=0.0003,
                     betas=(0.9, 0.999),
                     gamma=0.99,
-                    K_epochs=10,
+                    K_epochs=50,
                     eps_clip=0.2)
 
 search_tiling(env,
               agent,
               update_timestep=500,
-              max_timesteps=100,
+              max_timesteps=200,
               max_episodes=15000,
               log_interval=10,
               solved_reward=-10,

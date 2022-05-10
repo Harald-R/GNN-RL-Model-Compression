@@ -112,7 +112,8 @@ class TilingGraphEnv:
         out_C                  , \
         out_H                  , \
         out_W                  , \
-        out_elem_byte_size     , _ = layer
+        out_elem_byte_size     , \
+        _, _                   = layer
 
         channel_tiles, height_tiles = new_tiling_scheme
 
@@ -130,11 +131,17 @@ class TilingGraphEnv:
 
     def update_state(self, action):
         for i, layer in enumerate(self.state['x']):
-            layer_action = action[i * self.max_dim_tiles : i * self.max_dim_tiles + self.max_dim_tiles]
-            new_tiling_scheme = np.argmax(layer_action) + 1
+            num_layer_actions = self.max_dim_tiles * 2
+            layer_action = action[i * num_layer_actions : i * num_layer_actions + num_layer_actions]
+            tiling_channel = layer_action[:self.max_dim_tiles]
+            tiling_height = layer_action[self.max_dim_tiles:]
+
+            tiling_channel = np.argmax(tiling_channel) + 1
+            tiling_height = np.argmax(tiling_height) + 1
 
             new_layer_features = layer.clone()
-            new_layer_features[13] = new_tiling_scheme
+            new_layer_features[13] = tiling_channel
+            new_layer_features[14] = tiling_height
 
             self.state['x'][i] = new_layer_features
 
