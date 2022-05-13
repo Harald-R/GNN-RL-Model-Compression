@@ -1,6 +1,7 @@
 from gnnrl.graph_env.graph_environment_tiling import TilingGraphEnv
 from gnnrl.lib.RL.agent_tiling import AgentTiling
 from gnnrl.search_tiling import search_tiling
+from gnnrl.parse_ir import parse_IR
 
 import torch
 from torch_geometric.data import Data
@@ -10,6 +11,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 def create_graph():
     """
     node_features:
+        op type
+
         input channels
         input height
         input width
@@ -26,14 +29,15 @@ def create_graph():
         output width
         output element byte size
 
-        tiling scheme
+        channel tiling
+        height tiling
     """
     x = torch.tensor([
-        [3, 512, 512, 2, 16, 3, 3, 3, 2, 16, 256, 256, 2, 1, 1],
-        [16, 256, 256, 2, 32, 16, 3, 3, 2, 32, 128, 128, 2, 1, 1],
-        [32, 128, 128, 2, 64, 32, 3, 3, 2, 64, 64, 64, 2, 1, 1],
-        [64, 64, 64, 2, 64, 64, 3, 3, 2, 128, 64, 64, 2, 1, 1],
-        [128, 64, 64, 2, 256, 128, 3, 3, 2, 256, 64, 64, 2, 1, 1]
+        [0, 3, 512, 512, 2, 16, 3, 3, 3, 2, 16, 256, 256, 2, 1, 1],
+        [0, 16, 256, 256, 2, 32, 16, 3, 3, 2, 32, 128, 128, 2, 1, 1],
+        [0, 32, 128, 128, 2, 64, 32, 3, 3, 2, 64, 64, 64, 2, 1, 1],
+        [0, 64, 64, 64, 2, 64, 64, 3, 3, 2, 128, 64, 64, 2, 1, 1],
+        [0, 128, 64, 64, 2, 256, 128, 3, 3, 2, 256, 64, 64, 2, 1, 1]
     ], dtype=torch.float, device=device)
 
     edge_index = torch.tensor([
@@ -45,7 +49,11 @@ def create_graph():
 
     return Data(x=x, edge_index=edge_index), num_layers
 
-graph, num_layers = create_graph()
+def parse_resnet50():
+    graph = parse_IR('../../resnet50_files/resnet50_ir_before_pass.mlir')
+    return graph, graph.num_nodes
+
+graph, num_layers = parse_resnet50()
 
 max_dim_tiles = 10
 
@@ -55,7 +63,7 @@ env = TilingGraphEnv(graph,
                      max_timesteps=5,
                      log_dir="results_tiling")
 
-num_features = 15
+num_features = graph.x.shape[1]
 num_actions = num_layers * (max_dim_tiles * 2)  # supports tiling over C and H for each layer
 
 agent = AgentTiling(state_dim=num_features,

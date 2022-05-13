@@ -100,6 +100,7 @@ class TilingGraphEnv:
 
 
     def compute_layer_size(self, layer, new_tiling_scheme):
+        op_type                , \
         in_C                   , \
         in_H                   , \
         in_W                   , \
@@ -140,8 +141,8 @@ class TilingGraphEnv:
             tiling_height = np.argmax(tiling_height) + 1
 
             new_layer_features = layer.clone()
-            new_layer_features[13] = tiling_channel
-            new_layer_features[14] = tiling_height
+            new_layer_features[-2] = tiling_channel
+            new_layer_features[-1] = tiling_height
 
             self.state['x'][i] = new_layer_features
 
