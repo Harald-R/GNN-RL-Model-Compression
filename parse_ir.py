@@ -1,4 +1,6 @@
 import re
+import torch
+from torch_geometric.data import Data
 
 def get_tensor_size(type_str):
     type_info = type_str.split('x')
@@ -91,7 +93,7 @@ def parse_operations_from_IR(file_path):
 
     return operations, sw_operations, constants
 
-def populate_operands_information(operations):
+def populate_operands_information(operations, sw_operations, constants):
     for value, op_information in operations.items():
         op_type = op_information['op_type']
         operands = op_information['operands']
@@ -159,7 +161,7 @@ def populate_operands_information(operations):
             operations[value]['input2_elem_type'] = input2_elem_type
     return operations
 
-def remove_inputs_and_constant_operands(operations):
+def remove_inputs_and_constant_operands(operations, constants):
     for value, op_information in operations.items():
         operands_to_remove = []
         for operand in op_information['operands']:
@@ -167,9 +169,10 @@ def remove_inputs_and_constant_operands(operations):
                 operands_to_remove.append(operand)
             elif operand not in list(operations.keys()):
                 operands_to_remove.append(operand)
+
         if operands_to_remove:
             for operand in operands_to_remove:
-                op_information['operands'].remove(operand)
+                operations[value]['operands'].remove(operand)
     return operations
 
 def generate_graph_info(operations):
@@ -203,10 +206,14 @@ def generate_graph_info(operations):
         op_type_encoded = get_op_type_encoding(op_type)
 
         # TODO: cover weights table and activation window
+        default_tiling_C = 1
+        default_tiling_H = 1
+
         op_features = [op_type_encoded,
-                    input_C, input_H, input_W, input_elem_byte_size,
-                    weights_OC, weights_IC, weights_KY, weights_KX, weights_elem_byte_size,
-                    output_C, output_H, output_W, output_elem_byte_size]
+                       input_C, input_H, input_W, input_elem_byte_size,
+                       weights_OC, weights_IC, weights_KY, weights_KX, weights_elem_byte_size,
+                       output_C, output_H, output_W, output_elem_byte_size,
+                       default_tiling_C, default_tiling_H]
         features.append(op_features)
         graph_op_indices[value] = len(features) - 1
 
@@ -216,11 +223,27 @@ def generate_graph_info(operations):
 
     return features, graph_edges_source, graph_edges_destination
 
-if __name__ == '__main__':
-    operations, sw_operations, constants = parse_operations_from_IR('resnet50_files/resnet50_ir_before_pass.mlir')
-    operations = populate_operands_information(operations)
-    operations = remove_inputs_and_constant_operands(operations)
+def create_torch_graph(features, graph_edges_source, graph_edges_destination):
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    x = torch.tensor(features, dtype=torch.float, device=device)
+    edge_index = torch.tensor([
+        graph_edges_source,
+        graph_edges_destination,
+    ],dtype=torch.long, device=device)
+
+    return Data(x=x, edge_index=edge_index)
+
+def parse_IR(file_path):
+    operations, sw_operations, constants = parse_operations_from_IR(file_path)
+    operations = populate_operands_information(operations, sw_operations, constants)
+    operations = remove_inputs_and_constant_operands(operations, constants)
     features, graph_edges_source, graph_edges_destination = generate_graph_info(operations)
-    print(features)
-    print(graph_edges_source)
-    print(graph_edges_destination)
+    # print(features)
+    # print(graph_edges_source)
+    # print(graph_edges_destination)
+    return create_torch_graph(features, graph_edges_source, graph_edges_destination)
+
+if __name__ == '__main__':
+    graph = parse_IR('resnet50_files/resnet50_ir_before_pass.mlir')
+    # print(graph)
