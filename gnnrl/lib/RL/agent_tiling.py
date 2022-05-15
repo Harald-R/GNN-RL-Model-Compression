@@ -33,7 +33,7 @@ class ActorNetworkTiling(nn.Module):
         self.linear1 = nn.Linear(g_embedding_size,hidden_size)
         self.linear2 = nn.Linear(hidden_size,nb_actions)
         self.nb_actions = nb_actions
-        self.softmax = nn.Softmax()
+        self.sigmoid = nn.Sigmoid()
         self.relu = nn.ReLU()
 
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
@@ -42,7 +42,7 @@ class ActorNetworkTiling(nn.Module):
     def forward(self, state):
         g = self.graph_encoder(state)
         actions = self.relu(self.linear1(g))
-        actions = self.softmax(self.linear2(actions))
+        actions = self.sigmoid(self.linear2(actions))
         return actions
 
     def save_checkpoint(self):
@@ -59,8 +59,7 @@ class CriticNetworkTiling(nn.Module):
         self.checkpoint_file = os.path.join(chkpt_dir, 'critic_torch_rl')
         self.graph_encoder_critic = graph_encoder_pyg(g_in_size, g_hidden_size, g_embedding_size)
         self.linear1 = nn.Linear(g_embedding_size, 1)
-        self.softmax = nn.Softmax()
-        # self.sigmoid = nn.Sigmoid()
+        self.sigmoid = nn.Sigmoid()
 
         # self.optimizer = optim.Adam(self.parameters(), lr=alpha)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
@@ -68,7 +67,7 @@ class CriticNetworkTiling(nn.Module):
 
     def forward(self, state):
         g = self.graph_encoder_critic(state)
-        value = self.softmax(self.linear1(g))
+        value = self.sigmoid(self.linear1(g))
         return value
 
     def save_checkpoint(self):

@@ -105,27 +105,28 @@ class TilingGraphEnv:
         in_H                   , \
         in_W                   , \
         in_elem_byte_size      , \
-        weights_OC             , \
-        weights_IC             , \
-        weights_KH             , \
-        weights_KW             , \
-        weights_elem_byte_size , \
         out_C                  , \
         out_H                  , \
         out_W                  , \
         out_elem_byte_size     , \
+        KH                     , \
+        KW                     , \
+        weights_elem_byte_size , \
         _, _                   = layer
+
+        if op_type != 0:
+            print('Unsupported op type:', op_type)
+            return np.inf
 
         channel_tiles, height_tiles = new_tiling_scheme
 
         # TODO: also try adding only +1 in case remainder exists
-        tiled_weights_OC = weights_OC // channel_tiles + (weights_OC % channel_tiles)
         tiled_out_C = out_C // channel_tiles + (out_C % channel_tiles)
         tiled_in_H  = in_H // height_tiles + (in_H % height_tiles)
         tiled_out_H = out_H // height_tiles + (out_H % height_tiles)
 
         input_size = in_C * tiled_in_H * in_W * in_elem_byte_size
-        weights_size = tiled_weights_OC * weights_IC * weights_KH * weights_KW * weights_elem_byte_size
+        weights_size = tiled_out_C * in_C * KH * KW * weights_elem_byte_size
         output_size = tiled_out_C * tiled_out_H * out_W * out_elem_byte_size
 
         return input_size + weights_size + output_size

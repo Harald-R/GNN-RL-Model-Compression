@@ -18,26 +18,24 @@ def create_graph():
         input width
         input element byte size
 
-        weights output channels
-        weights input channels
-        weights kernel height
-        weights kernel width
-        weights element byte size
-
         output channels
         output height
         output width
         output element byte size
 
+        kernel height
+        kernel width
+        weights element byte size
+
         channel tiling
         height tiling
     """
     x = torch.tensor([
-        [0, 3, 512, 512, 2, 16, 3, 3, 3, 2, 16, 256, 256, 2, 1, 1],
-        [0, 16, 256, 256, 2, 32, 16, 3, 3, 2, 32, 128, 128, 2, 1, 1],
-        [0, 32, 128, 128, 2, 64, 32, 3, 3, 2, 64, 64, 64, 2, 1, 1],
-        [0, 64, 64, 64, 2, 64, 64, 3, 3, 2, 128, 64, 64, 2, 1, 1],
-        [0, 128, 64, 64, 2, 256, 128, 3, 3, 2, 256, 64, 64, 2, 1, 1]
+        [0, 3, 512, 512, 2, 16, 256, 256, 2, 3, 3, 2, 1, 1],
+        [0, 16, 256, 256, 2, 32, 128, 128, 2, 3, 3, 2, 1, 1],
+        [0, 32, 128, 128, 2, 64, 64, 64, 2, 3, 3, 2, 1, 1],
+        [0, 64, 64, 64, 2, 128, 64, 64, 2, 3, 3, 2, 1, 1],
+        [0, 128, 64, 64, 2, 256, 64, 64, 2, 3, 3, 2, 1, 1]
     ], dtype=torch.float, device=device)
 
     edge_index = torch.tensor([
@@ -53,7 +51,8 @@ def parse_resnet50():
     graph = parse_IR('../../resnet50_files/resnet50_ir_before_pass.mlir')
     return graph, graph.num_nodes
 
-graph, num_layers = parse_resnet50()
+# graph, num_layers = parse_resnet50()
+graph, num_layers = create_graph()
 
 max_dim_tiles = 10
 
@@ -72,7 +71,7 @@ agent = AgentTiling(state_dim=num_features,
                     lr=0.0003,
                     betas=(0.9, 0.999),
                     gamma=0.99,
-                    K_epochs=50,
+                    K_epochs=20,
                     eps_clip=0.2)
 
 search_tiling(env,
